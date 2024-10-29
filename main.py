@@ -6,6 +6,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, PatternFill, Border, Side, Font
 from openpyxl.worksheet.dimensions import ColumnDimension, DimensionHolder
 from openpyxl.utils import get_column_letter
+import threading
 
 root = tk.Tk()
 root.geometry("580x350+50+50")  # widthxheight+x+y
@@ -80,7 +81,7 @@ def generate_excel_anhui():
 
                 if company_name == '安徽和众企业服务有限公司':
                     if wb_anhui_accident_insurance is None:
-                        template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                        template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'template_file',
                                                      '安徽和众社保申报表.xlsx')
                         file_name = f"安徽和众：《社保增减员申报表》--供应链项目{company_name}{selected_year}年{selected_month}月.xlsx"
                         wb_anhui_accident_insurance = load_workbook(template_path)
@@ -103,7 +104,7 @@ def generate_excel_anhui():
 
 # 生成天安的文件
 def generate_excel_tianan():
-    ...
+    generate_insurance_fund(tianan_path,"广东天安智慧保安服务有限公司",wb_tianan_accident_insurance,wb_tianan_increase_decrease)
 
 
 # 生成智建的文件
@@ -112,7 +113,7 @@ def generate_excel_zhijian():
 
 # 生成馨悦的文件
 def generate_excel_xinyue():
-    ...
+    generate_insurance_fund(xinyue_path,"广州馨悦商务服务有限公司",wb_xinyue_accident_insurance,wb_xinyue_increase_decrease)
 
 
 # 生成意外险，社保公积金增减员Excel文件
@@ -338,7 +339,23 @@ def write_fund_declaration(cur_company_name, join_date, regularization_date,resi
 
 # 生成所有的Excel文件
 def generate_all_excel():
-    ...
+     # 创建线程
+    thread_tianan = threading.Thread(target=generate_excel_tianan)
+    thread_zhijian = threading.Thread(target=generate_excel_zhijian)
+    thread_xinyue = threading.Thread(target=generate_excel_xinyue)
+    thread_anhui = threading.Thread(target=generate_excel_anhui)
+ 
+    # 启动线程
+    thread_tianan.start()
+    thread_zhijian.start()
+    thread_xinyue.start()
+    thread_anhui.start()
+ 
+    # 等待线程完成
+    thread_tianan.join()
+    thread_zhijian.join()
+    thread_xinyue.join()
+    thread_anhui.join()
 
 
 if __name__ == '__main__':
