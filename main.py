@@ -78,16 +78,7 @@ def generate_excel_anhui():
                 # 需要买意外险
                 company_name = sheet_inservice_xinyue.cell(row=row_index, column=39).value  # 签订合同主体单位名称
 
-                if company_name == '广州馨悦商务服务有限公司':
-                    if wb_xinyue_accident_insurance is None:
-                        template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '意外险.xlsx')
-                        file_name = f"{company_name}{selected_year}年{selected_month}月 意外险.xlsx"
-                        wb_xinyue_accident_insurance = load_workbook(template_path)
-                        wb_xinyue_accident_insurance.save(file_name)
-                        wb_xinyue_accident_insurance.close()
-                        wb_xinyue_accident_insurance = load_workbook(file_name)
-
-                elif company_name == '安徽和众企业服务有限公司':
+                if company_name == '安徽和众企业服务有限公司':
                     if wb_anhui_accident_insurance is None:
                         template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                                      '安徽和众社保申报表.xlsx')
@@ -119,9 +110,13 @@ def generate_excel_tianan():
 def generate_excel_zhijian():
     ...
 
-
 # 生成馨悦的文件
-def generate_excel_xinyue(roster_file_path, cur_company_name, wb_accident_insurance, wb_increase_decrease):
+def generate_excel_xinyue():
+    ...
+
+
+# 生成意外险，社保公积金增减员Excel文件
+def generate_insurance_fund(roster_file_path, cur_company_name, wb_accident_insurance, wb_increase_decrease):
     selected_year = year_combo.get()
     selected_month = month_combo.get().replace('月', '')
     # print(get_days_of_month(int(selected_year), int(selected_month)))
@@ -157,6 +152,7 @@ def generate_excel_xinyue(roster_file_path, cur_company_name, wb_accident_insura
                         wb_accident_insurance = load_workbook(file_name)
 
                     sheet_accident_increase = wb_accident_insurance["员工加保"]
+
                     sheet_accident_increase.cell(4 + accident_increase_count, 1).value = accident_increase_count  # 序号
                     sheet_accident_increase.cell(4 + accident_increase_count, 3).value = sheet_inservice.cell(
                         row=row_index, column=3).value  # 员工姓名
@@ -172,13 +168,12 @@ def generate_excel_xinyue(roster_file_path, cur_company_name, wb_accident_insura
                     sheet_accident_increase.cell(4 + accident_increase_count, 13).value = company_name  # 成本中心
 
                     if int(join_date_array[2]) <= 15:  # 本月15日前入职，需要社保增员
-                        write_social_declaration(cur_company_name, join_date, row_index,
+                        social_count = write_social_declaration(cur_company_name, join_date, None,"新增",row_index,
                                                  selected_month, selected_year, sheet_inservice,
                                                  social_count, wb_increase_decrease)
 
-            elif int(selected_year) == int(join_date_array[0]) and int(selected_month) == int(
-                    join_date_array[1]) - 1 and int(join_date_array[2]) > 15:  # 上个月15日后入职，需要社保增员
-                write_social_declaration(cur_company_name, join_date, row_index,
+            elif int(selected_year) == int(join_date_array[0]) and int(selected_month) - 1 == int(join_date_array[1]) and int(join_date_array[2]) > 15:  # 上个月15日后入职，需要社保增员
+                social_count = write_social_declaration(cur_company_name, join_date, None,"新增",row_index,
                                          selected_month, selected_year, sheet_inservice,
                                          social_count, wb_increase_decrease)
 
@@ -189,13 +184,12 @@ def generate_excel_xinyue(roster_file_path, cur_company_name, wb_accident_insura
             if int(selected_year) == int(regularization_date_array[0]) and int(selected_month) == int(
                     regularization_date_array[1]):
                 if int(regularization_date_array[2]) <= 15:  # 本月15日前转正,公积金增员
-                    write_fund_declaration(cur_company_name, join_date, regularization_date, row_index,
+                    fund_count = write_fund_declaration(cur_company_name, join_date, regularization_date,None,"新增公积金", row_index,
                                            selected_month, selected_year, sheet_inservice,
                                            fund_count, wb_increase_decrease)
 
-            elif int(selected_year) == int(regularization_date_array[0]) and int(selected_month) == int(
-                    regularization_date_array[1]) - 1 and int(regularization_date_array[2]) > 15:  # 上个月15日后转正,公积金增员
-                write_fund_declaration(cur_company_name, join_date, regularization_date, row_index,
+            elif int(selected_year) == int(regularization_date_array[0]) and int(selected_month) - 1 == int(regularization_date_array[1]) and int(regularization_date_array[2]) > 15:  # 上个月15日后转正,公积金增员
+                fund_count = write_fund_declaration(cur_company_name, join_date, regularization_date,None,"新增公积金", row_index,
                                        selected_month, selected_year, sheet_inservice,
                                        fund_count, wb_increase_decrease)
 
@@ -203,14 +197,57 @@ def generate_excel_xinyue(roster_file_path, cur_company_name, wb_accident_insura
 
     ########################################离职人员################################################
     sheet_dimission = wb_roster["花名册离职模板"]  # 读取离职人员
+    for row_index in range(1, sheet_dimission.max_row + 1):
+        resignation_date = sheet_dimission.cell(row=row_index, column=56).value  # 离职时间
+        if validate_date(resignation_date) is True:
+            # 判断是否本年本月
+            resignation_date_array = resignation_date.split("/")
+            if int(selected_year) == int(resignation_date_array[0]) and int(selected_month) == int(resignation_date_array[1]):
+                # 只要当月离职的就减人意外险
+                company_name = sheet_dimission.cell(row=row_index, column=39).value  # 签订合同主体单位名称
+                if company_name == cur_company_name:
+                    accident_decrease_count = accident_decrease_count + 1
+                    if wb_accident_insurance is None:
+                        template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'template_file',
+                                                     '意外险.xlsx')
+                        file_name = f"{company_name}{selected_year}年{selected_month}月 意外险.xlsx"
+                        wb_accident_insurance = load_workbook(template_path)
+                        wb_accident_insurance.save(file_name)
+                        wb_accident_insurance.close()
+                        wb_accident_insurance = load_workbook(file_name)
 
+                    sheet_accident_decrease = wb_accident_insurance["减人"]   
 
+                    sheet_accident_decrease.cell(5 + accident_decrease_count,1).value = accident_decrease_count # 序号
+                    sheet_accident_decrease.cell(5 + accident_decrease_count,2).value = sheet_dimission.cell(
+                        row=row_index, column=3).value  # 员工姓名
+                    sheet_accident_decrease.cell(5 + accident_decrease_count,3).value = sheet_dimission.cell(
+                        row=row_index, column=19).value # 员工证件号码
+                    sheet_accident_decrease.cell(5 + accident_decrease_count,4).value = sheet_dimission.cell(
+                        row=row_index, column=17).value # 员工出生日期
+                    sheet_accident_decrease.cell(5 + accident_decrease_count,4).value = resignation_date # 离职日期
+    
+                if int(resignation_date_array[2]) <= 15:  # 本月15日前离职，需要社保/公积金减员
+                    social_count = write_social_declaration(cur_company_name, join_date, resignation_date,"停保",row_index,
+                                                 selected_month, selected_year, sheet_inservice,
+                                                 social_count, wb_increase_decrease)
+                    fund_count = write_fund_declaration(cur_company_name, join_date, regularization_date,resignation_date,"停公积金", row_index,
+                                       selected_month, selected_year, sheet_inservice,
+                                       fund_count, wb_increase_decrease)
+
+            elif int(selected_year) == int(resignation_date_array[0]) and int(selected_month) - 1 == int(resignation_date_array[1]) and int(resignation_date_array[2]) > 15:  # 上个月15日后离职,社保/公积金减员
+                social_count = write_social_declaration(cur_company_name, join_date, resignation_date,"停保",row_index,
+                                                 selected_month, selected_year, sheet_inservice,
+                                                 social_count, wb_increase_decrease)
+                fund_count = write_fund_declaration(cur_company_name, join_date, regularization_date,resignation_date,"停公积金", row_index,
+                                       selected_month, selected_year, sheet_inservice,
+                                       fund_count, wb_increase_decrease)
     ########################################离职人员################################################
 
     # messagebox.showinfo("提示", f"生成文件【{file_name}】成功")
 
-
-def write_social_declaration(cur_company_name, join_date, row_index, selected_month, selected_year,
+# 写入社保申报表sheet页
+def write_social_declaration(cur_company_name, join_date,resignation_date,description, row_index, selected_month, selected_year,
                              sheet_inservice, social_count, wb_increase_decrease):
     company_name = sheet_inservice.cell(row=row_index, column=39).value  # 签订合同主体单位名称
     if company_name == cur_company_name:
@@ -231,9 +268,14 @@ def write_social_declaration(cur_company_name, join_date, row_index, selected_mo
                                       2).value = f"{selected_year}年{selected_month}月"  # 起始月份
         sheet_social_declaration.cell(2 + social_count, 3).value = '供应链项目'  # 项目名称
         sheet_social_declaration.cell(2 + social_count, 4).value = '广州'  # 社保缴费地
-        sheet_social_declaration.cell(2 + social_count, 5).value = '新增'  # 新增/停保
-        sheet_social_declaration.cell(2 + social_count, 5).fill = PatternFill(start_color='FFFF00',
-                                                                              fill_type='solid')
+        sheet_social_declaration.cell(2 + social_count, 5).value = description  # 新增/停保
+        if description == "新增":
+            sheet_social_declaration.cell(2 + social_count, 5).fill = PatternFill(start_color='FFFF00',
+                                                                              fill_type='solid') # 填充单元格颜色
+        elif description == "停保":
+            sheet_social_declaration.cell(2 + social_count, 5).fill = PatternFill(start_color='FABF8F',
+                                                                              fill_type='solid')  # 填充单元格颜色
+            sheet_social_declaration.cell(2 + social_count, 13).value = resignation_date  # 离职日期
         sheet_social_declaration.cell(2 + social_count, 6).value = sheet_inservice.cell(
             row=row_index, column=3).value  # 姓名
         sheet_social_declaration.cell(2 + social_count, 7).value = sheet_inservice.cell(
@@ -245,9 +287,11 @@ def write_social_declaration(cur_company_name, join_date, row_index, selected_mo
         sheet_social_declaration.cell(2 + social_count, 10).value = sheet_inservice.cell(
             row=row_index, column=20).value  # 电话号码
         sheet_social_declaration.cell(2 + social_count, 12).value = join_date  # 入职日期
+    return social_count
 
 
-def write_fund_declaration(cur_company_name, join_date, regularization_date, row_index, selected_month, selected_year,
+# 写入公积金申报表sheet页
+def write_fund_declaration(cur_company_name, join_date, regularization_date,resignation_date,description, row_index, selected_month, selected_year,
                            sheet_inservice, fund_count, wb_increase_decrease):
     company_name = sheet_inservice.cell(row=row_index, column=39).value  # 签订合同主体单位名称
     if company_name == cur_company_name:
@@ -268,7 +312,14 @@ def write_fund_declaration(cur_company_name, join_date, regularization_date, row
                                     2).value = f"{selected_year}年{selected_month}月"  # 起始月份
         sheet_fund_declaration.cell(2 + fund_count, 3).value = '供应链项目'  # 项目名称
         sheet_fund_declaration.cell(2 + fund_count, 4).value = '广州'  # 社保缴费地
-        sheet_fund_declaration.cell(2 + fund_count, 5).value = '新增公积金'  # 新增/停保
+        sheet_fund_declaration.cell(2 + fund_count, 5).value = description  # 新增/停保
+        if description == '新增公积金':
+            sheet_fund_declaration.cell(2 + fund_count, 5).fill = PatternFill(start_color='FFFF00',
+                                                                              fill_type='solid') # 填充单元格颜色
+        elif description == '停公积金':                                                                     
+            sheet_fund_declaration.cell(2 + fund_count, 5).fill = PatternFill(start_color='FABF8F',
+                                                                              fill_type='solid') # 填充单元格颜色
+            sheet_fund_declaration.cell(2 + fund_count, 14).value = resignation_date  # 离职日期
         sheet_fund_declaration.cell(2 + fund_count, 6).value = sheet_inservice.cell(
             row=row_index, column=3).value  # 姓名
         sheet_fund_declaration.cell(2 + fund_count, 7).value = sheet_inservice.cell(
@@ -283,7 +334,7 @@ def write_fund_declaration(cur_company_name, join_date, regularization_date, row
             row=row_index, column=22).value  # 婚否
         sheet_fund_declaration.cell(2 + fund_count, 13).value = join_date  # 入职日期
         sheet_fund_declaration.cell(2 + fund_count, 15).value = regularization_date  # 转正日期
-
+    return fund_count
 
 # 生成所有的Excel文件
 def generate_all_excel():
