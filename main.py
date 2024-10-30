@@ -6,7 +6,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, PatternFill, Border, Side, Font
 from openpyxl.worksheet.dimensions import ColumnDimension, DimensionHolder
 from openpyxl.utils import get_column_letter
-import threading
+from multiprocessing import Process
 
 root = tk.Tk()
 root.geometry("580x350+50+50")  # widthxheight+x+y
@@ -68,7 +68,12 @@ def generate_excel_anhui():
     selected_month = month_combo.get().replace('月', '')
     # print(get_days_of_month(int(selected_year), int(selected_month)))
 
+    increase_count = 0  # 增员人数
+
+    decrease_count = 0  # 减员人数
+
     wb_roster_xinyue = load_workbook(filename=xinyue_path.get(), read_only=True, data_only=True)  # 读取馨悦-供应链项目花名册Excel
+    ####################################在职员工##########################################
     sheet_inservice_xinyue = wb_roster_xinyue["花名册在职模板"]  # 读取在职人员
     for row_index in range(1, sheet_inservice_xinyue.max_row + 1):
         join_date = sheet_inservice_xinyue.cell(row=row_index, column=10).value  # 入司日期
@@ -80,6 +85,7 @@ def generate_excel_anhui():
                 company_name = sheet_inservice_xinyue.cell(row=row_index, column=39).value  # 签订合同主体单位名称
 
                 if company_name == '安徽和众企业服务有限公司':
+                    increase_count = increase_count + 1
                     if wb_anhui_accident_insurance is None:
                         template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'template_file',
                                                      '安徽和众社保申报表.xlsx')
@@ -88,19 +94,17 @@ def generate_excel_anhui():
                         wb_anhui_accident_insurance.save(file_name)
                         wb_anhui_accident_insurance.close()
                         wb_anhui_accident_insurance = load_workbook(file_name)
+                        
 
-                if int(join_date_array[2]) <= 15:  # 社保增员
-                    ...
+                    sheet_anhui_increase = wb_anhui_accident_insurance["增员"]
 
-        regularization_date = sheet_inservice_xinyue.cell(row=row_index, column=14).value  # 实际转正时间
-        if validate_date(regularization_date) is True:
-            # 判断是否本年本月
-            regularization_date_array = regularization_date.split("/")
-            if int(selected_year) == int(regularization_date_array[0]) and int(selected_month) == int(
-                    regularization_date_array[1]):
-                if int(regularization_date_array[2]) <= 15:  # 公积金增员
-                    ...
+                    sheet_anhui_increase.cell(5 + increase_count,1).value = increase_count # 序号
+                    sheet_anhui_increase.cell(5 + increase_count,2).value = f"{selected_year}年{selected_month}月" # 增员申报时间
 
+
+
+     ####################################在职员工##########################################        
+  
 
 # 生成天安的文件
 def generate_excel_tianan():
@@ -109,7 +113,8 @@ def generate_excel_tianan():
 
 # 生成智建的文件
 def generate_excel_zhijian():
-    ...
+    generate_insurance_fund(zhijian_path,"广东智建工程有限公司",wb_zhijian_accident_insurance,wb_zhijian_increase_decrease)
+
 
 # 生成馨悦的文件
 def generate_excel_xinyue():
@@ -288,6 +293,8 @@ def write_social_declaration(cur_company_name, join_date,resignation_date,descri
         sheet_social_declaration.cell(2 + social_count, 10).value = sheet_inservice.cell(
             row=row_index, column=20).value  # 电话号码
         sheet_social_declaration.cell(2 + social_count, 12).value = join_date  # 入职日期
+    wb_increase_decrease.save(file_name)
+    wb_increase_decrease.close()
     return social_count
 
 
@@ -335,27 +342,29 @@ def write_fund_declaration(cur_company_name, join_date, regularization_date,resi
             row=row_index, column=22).value  # 婚否
         sheet_fund_declaration.cell(2 + fund_count, 13).value = join_date  # 入职日期
         sheet_fund_declaration.cell(2 + fund_count, 15).value = regularization_date  # 转正日期
+    wb_increase_decrease.save(file_name)
+    wb_increase_decrease.close()
     return fund_count
 
 # 生成所有的Excel文件
 def generate_all_excel():
-     # 创建线程
-    thread_tianan = threading.Thread(target=generate_excel_tianan)
-    thread_zhijian = threading.Thread(target=generate_excel_zhijian)
-    thread_xinyue = threading.Thread(target=generate_excel_xinyue)
-    thread_anhui = threading.Thread(target=generate_excel_anhui)
+  
+    process_tianan = Process(target=generate_excel_tianan)
+    process_zhijian = Process(target=generate_excel_zhijian)
+    process_xinyue = Process(target=generate_excel_xinyue)
+    process_anhui = Process(target=generate_excel_anhui)
  
-    # 启动线程
-    thread_tianan.start()
-    thread_zhijian.start()
-    thread_xinyue.start()
-    thread_anhui.start()
  
-    # 等待线程完成
-    thread_tianan.join()
-    thread_zhijian.join()
-    thread_xinyue.join()
-    thread_anhui.join()
+    process_tianan.start()
+    process_zhijian.start()
+    process_xinyue.start()
+    process_anhui.start()
+ 
+   
+    process_tianan.join()
+    process_zhijian.join()
+    process_xinyue.join()
+    process_anhui.join()
 
 
 if __name__ == '__main__':
